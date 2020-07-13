@@ -52,6 +52,9 @@ local function PropSignTwk(inst)
     end
     inst.OnCancelMinigame = function() end
     UpvalueHacker.SetUpvalue(Prefabs.propsign.fn, OnSmashed, "OnSmashed")
+    if inst:HasTag("irreplaceable") then
+        inst:RemoveTag("irreplaceable")
+    end
 end
 
 AddPrefabPostInit("propsign", PropSignTwk)
