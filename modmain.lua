@@ -1,26 +1,59 @@
---修改小木牌建筑
-local function onhammered_My(inst, worker)
+if not GLOBAL.TheNet:GetIsServer() then
+    return
+end
+
+local require = GLOBAL.require
+local SpawnPrefab = GLOBAL.SpawnPrefab
+local UpvalueHacker = require("upvaluehacker")
+
+--锤掉木牌生成打人木牌
+
+local function OnHammer(inst, worker)
     if inst.components.burnable ~= nil and inst.components.burnable:IsBurning() then
         inst.components.burnable:Extinguish()
     end
-	--[[
-    inst.components.lootdropper:DropLoot()
-    local fx = _G.SpawnPrefab("collapse_small")
-    fx.Transform:SetPosition(inst.Transform:GetWorldPosition())
-    fx:SetMaterial("wood")
-    
-	
-	--
-	_G.SpawnPrefab("propsign").Transform:SetPosition(inst.Transform:GetWorldPosition())
-	
-	]]--
-	inst.components.lootdropper:SpawnLootPrefab("propsign")	--在原版函数中加了一句这个
-	inst:Remove()
+    inst.components.lootdropper:SpawnLootPrefab("propsign")
+    inst:Remove()
 end
 
-local function Hook_Homesign(inst)
-	if inst.components.workable then
-		inst.components.workable:SetOnFinishCallback(onhammered_My)
-	end
+local function HomsignTwk(inst)
+    if inst.components.workable then
+        inst.components.workable:SetOnFinishCallback(OnHammer)
+    end
 end
-AddPrefabPostInit("homesign",Hook_Homesign)
+
+AddPrefabPostInit("homesign", HomsignTwk)
+
+--打人木牌修改
+
+local function OnFinished(inst)
+    inst:Remove()
+end
+
+local function PropSignTwk(inst)
+    inst:AddComponent("finiteuses")
+    inst.components.finiteuses:SetMaxUses(5)
+    inst.components.finiteuses:SetUses(5)
+    inst.components.finiteuses:SetOnFinished(OnFinished)
+    if inst.components.inventoryitem then
+        inst.components.inventoryitem.cangoincontainer = true
+    end
+    inst.OnCancelMinigame = function() end
+end
+
+AddPrefabPostInit("propsign", PropSignTwk)
+
+--替换Onsmashed函数 加上每次使用消耗的耐久
+
+local function OnSmashed(inst, pos)
+    local fx = SpawnPrefab("propsignshatterfx")
+    fx.Transform:SetPosition(pos:Get())
+    fx.SoundEmitter:PlaySound("dontstarve/common/destroy_wood")
+    if inst.components.finiteuses then
+        inst.components.finiteuses:Use(1)
+    end
+end
+
+AddPrefabPostInit("world", function(inst)
+    UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.propsign.fn, OnSmashed, "OnSmashed")
+end)
