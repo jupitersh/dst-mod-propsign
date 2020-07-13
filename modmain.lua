@@ -4,7 +4,10 @@ end
 
 local require = GLOBAL.require
 local SpawnPrefab = GLOBAL.SpawnPrefab
+local Prefabs = GLOBAL.Prefabs
 local UpvalueHacker = require("upvaluehacker")
+
+local propsign_uses = GetModConfigData("finiteuses")
 
 --锤掉木牌生成打人木牌
 
@@ -30,21 +33,6 @@ local function OnFinished(inst)
     inst:Remove()
 end
 
-local function PropSignTwk(inst)
-    inst:AddComponent("finiteuses")
-    inst.components.finiteuses:SetMaxUses(5)
-    inst.components.finiteuses:SetUses(5)
-    inst.components.finiteuses:SetOnFinished(OnFinished)
-    if inst.components.inventoryitem then
-        inst.components.inventoryitem.cangoincontainer = true
-    end
-    inst.OnCancelMinigame = function() end
-end
-
-AddPrefabPostInit("propsign", PropSignTwk)
-
---替换Onsmashed函数 加上每次使用消耗的耐久
-
 local function OnSmashed(inst, pos)
     local fx = SpawnPrefab("propsignshatterfx")
     fx.Transform:SetPosition(pos:Get())
@@ -54,6 +42,16 @@ local function OnSmashed(inst, pos)
     end
 end
 
-AddPrefabPostInit("world", function(inst)
-    UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.propsign.fn, OnSmashed, "OnSmashed")
-end)
+local function PropSignTwk(inst)
+    inst:AddComponent("finiteuses")
+    inst.components.finiteuses:SetMaxUses(propsign_uses)
+    inst.components.finiteuses:SetUses(propsign_uses)
+    inst.components.finiteuses:SetOnFinished(OnFinished)
+    if inst.components.inventoryitem then
+        inst.components.inventoryitem.cangoincontainer = true
+    end
+    inst.OnCancelMinigame = function() end
+    UpvalueHacker.SetUpvalue(Prefabs.propsign.fn, OnSmashed, "OnSmashed")
+end
+
+AddPrefabPostInit("propsign", PropSignTwk)
